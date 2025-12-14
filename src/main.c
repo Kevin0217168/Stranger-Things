@@ -3,8 +3,8 @@
 #include "stdint.h"
 
 #define DS P54
-#define ST_CP P30
-#define SH_CP P33
+#define ST_CP P33
+#define SH_CP P30
 #define BEE P32
 
 
@@ -80,11 +80,13 @@ void pwm_init(void){
   CR = 1;
 }
 
+uint8_t string[] = "Hello World!\r\n";
+
 void main(void)
 {
   // 设置P5.4 P5.3 P3.3为推挽输出
   // P3.1 P3.0为准双向口
-  P5M0 = 0x30; // 0b00110000
+  P5M0 = 0x00; // 0b00110000
   P5M1 = 0x00; // 0b00000000
 
   P3M0 = 0x04; // 0b00001000
@@ -95,11 +97,11 @@ void main(void)
   ST_CP = 0;
   
   timer0_init();
-  // UartInit();
+  UartInit();
   pwm_init();
 
   while(1){
-    //UartSendString(string);
+    UartSendString(string);
     write(0xffffff, 24);
     delay_ms(1000);
     write(0x000000, 24);
