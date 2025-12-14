@@ -2,7 +2,7 @@
 #include "Serial.h"
 #include "stdint.h"
 
-#define DS P31
+#define DS P54
 #define ST_CP P30
 #define SH_CP P33
 #define BEE P32
@@ -36,11 +36,30 @@ void write(uint32_t data, uint8_t len){
   ST_CP = 0;
 }
 
+
+void SetFreq(uint16_t freq){
+  // 设置重装值
+  uint16_t count = 65535 - (uint16_t)(350 / (freq / 1000.0) - 2);
+  TH0 = count >> 8;
+  TL0 = count & (uint16_t)0x00ff;
+}
+
+void timer0_init(void){
+  // 设置TCON进行定时器设置
+  // 由于TCON寄存器可位寻址，可直接操作位
+  TR0 = 1; // 开启计时器0
+  TMOD = 0xf0; // 设置计时器0为16位自动重装载计时器
+  SetFreq(1000);
+  
+  // 对AUXR第7位置1 设置时钟分频值为1
+  AUXR = AUXR | 0x80;
+}
+
 void pwm_init(void){
   // 设置PCA功能脚，将CCP0 绑定到P32（BEE）
   P_SW1 = 0x00;
-  // 设置PCA脉冲源：系统时钟，禁用溢出中断，空闲下继续计数
-  CMOD = 0x08;
+  // 设置PCA脉冲源：使用计时器0溢出信号，禁用溢出中断，空闲下继续计数
+  CMOD = 0x04;
   // 初始化计数器
   CL = 0x00;
   CH = 0x00;
@@ -53,9 +72,9 @@ void pwm_init(void){
   // 6位下，计数器CL取低六位，最大64
   // 比较值b100000 = 0x20 = 32 刚好为一半，占空比50%
   // 同时计数器溢出一次，翻转一次，完成一个周期，即频率=PCA脉冲/计数器溢出值64
-  CCAP0L = 0x10;  
+  CCAP0L = 0x20;  
   // 设置比较器重装载值（影子寄存器）
-  CCAP0H = 0x10;
+  CCAP0H = 0x20;
   // 输出开启
   // CCON = 0x40;
   CR = 1;
@@ -68,13 +87,14 @@ void main(void)
   P5M0 = 0x30; // 0b00110000
   P5M1 = 0x00; // 0b00000000
 
-  P3M0 = 0x00; // 0b00001000
+  P3M0 = 0x04; // 0b00001000
   P3M1 = 0x00;
   
   DS = 0;
   SH_CP = 0;
   ST_CP = 0;
-
+  
+  timer0_init();
   // UartInit();
   pwm_init();
 
@@ -84,10 +104,12 @@ void main(void)
     delay_ms(1000);
     write(0x000000, 24);
     delay_ms(1000);
-
+    
+    CR = 1;
     for (uint8_t i = 0; i < 24; i++){
       write(1UL << 1UL * i, 24);
-      delay_ms(100);
+      SetFreq(300 + i * 100);
+      delay_ms(500);
     }
   }
 }
