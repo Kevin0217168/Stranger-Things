@@ -5,6 +5,8 @@
 #define DS P31
 #define ST_CP P30
 #define SH_CP P33
+#define BEE P32
+
 
 void delay_ms(unsigned int ms)
 {
@@ -34,7 +36,30 @@ void write(uint32_t data, uint8_t len){
   ST_CP = 0;
 }
 
-uint8_t string[] = "Hello World!\n\r";
+void pwm_init(void){
+  // 设置PCA功能脚，将CCP0 绑定到P32（BEE）
+  P_SW1 = 0x00;
+  // 设置PCA脉冲源：系统时钟，禁用溢出中断，空闲下继续计数
+  CMOD = 0x08;
+  // 初始化计数器
+  CL = 0x00;
+  CH = 0x00;
+  // 启用PCA0 6/7/8/10 位PWM 脉冲输出 无中断
+  CCAPM0 = 0x42;
+  // 设置输出6位PWM
+  // 当设置EPCnH和EPCnL = 1时，计数器会始终小于比较值，始终输出低电平
+  PCA_PWM0 = 0x80;
+  // 设置比较值
+  // 6位下，计数器CL取低六位，最大64
+  // 比较值b100000 = 0x20 = 32 刚好为一半，占空比50%
+  // 同时计数器溢出一次，翻转一次，完成一个周期，即频率=PCA脉冲/计数器溢出值64
+  CCAP0L = 0x10;  
+  // 设置比较器重装载值（影子寄存器）
+  CCAP0H = 0x10;
+  // 输出开启
+  // CCON = 0x40;
+  CR = 1;
+}
 
 void main(void)
 {
@@ -51,6 +76,7 @@ void main(void)
   ST_CP = 0;
 
   // UartInit();
+  pwm_init();
 
   while(1){
     //UartSendString(string);
