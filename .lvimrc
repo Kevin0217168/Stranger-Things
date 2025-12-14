@@ -1,0 +1,1 @@
+set makeprg=source\ ./build.sh
