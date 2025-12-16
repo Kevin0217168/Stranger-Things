@@ -1,14 +1,25 @@
 #ifndef __MUSIC_H__
 #define __MUSIC_H__
 
-typedef struct {
-    uint8_t note;      // 音符编码
-    uint8_t duration;  // 时值编码
+// 新的频率表
+typedef struct
+{
+    uint16_t NewFreTab[12];
+} MusicTable;
+
+typedef struct
+{
+    uint16_t freq;      // 音符编码
+    uint16_t soundMs;   // 时值编码
+    uint16_t silenceMs; // 间隔时值编码
 } MusicNote;
 
-void MusicPlayerManager(void);
+void SetMusicTable(uint8_t Signature, uint8_t Octachord);
+uint16_t DecodeNoteFrequency(uint8_t encodedNote, uint8_t keySignature, uint8_t octave);
+void DecodeDuration(MusicNote *musicNote, uint8_t encodedDuration, uint16_t baseTempo);
+
+void PlayMusic(__code uint8_t *music, uint8_t keySignature, uint16_t tempo, uint8_t octave);
+
 void MusicPlayer_Init(void);
-void TestSingleNote(uint8_t noteCode, uint16_t duration_ms);
-uint16_t DecodeNoteFrequency(uint8_t encodedNote, uint8_t keySignature);
 
 #endif
