@@ -255,24 +255,24 @@ void PlayMusic(__code uint8_t *music, uint8_t keySignature, uint16_t tempo, uint
 // }
 
 
-// 选择要测试的音符
-void TestSingleNote(uint8_t noteCode, uint16_t duration_ms)
-{
-    // 解码音符获取频率
-    uint16_t freq = DecodeNoteFrequency(noteCode, 0, 0);
+// // 选择要测试的音符
+// void TestSingleNote(uint8_t noteCode, uint16_t duration_ms)
+// {
+//     // 解码音符获取频率
+//     uint16_t freq = DecodeNoteFrequency(noteCode, 0, 0);
 
-    // 设置频率
-    BeepSetFreq(freq);
+//     // 设置频率
+//     BeepSetFreq(freq);
 
-    // 播放指定时间
-    for (uint16_t i = 0; i < duration_ms; i++)
-    {
-        delay_ms(1);
-    }
+//     // 播放指定时间
+//     for (uint16_t i = 0; i < duration_ms; i++)
+//     {
+//         delay_ms(1);
+//     }
 
-    // 停止发声
-    BeepSetFreq(0);
-}
+//     // 停止发声
+//     BeepSetFreq(0);
+// }
 
 // ==================== 示例主函数 ====================
 /*
