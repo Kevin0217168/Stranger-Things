@@ -73,7 +73,7 @@ $(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET).ihx
 # 下载到单片机
 flash: $(BUILD_DIR)/$(TARGET).hex
 	@echo "下载到 $(MCU) via $(SERIAL_PORT)..."
-	stcgal -p $(SERIAL_PORT) -a $(BUILD_DIR)/$(TARGET).hex
+	stcgal -p $(SERIAL_PORT) -t 22168 -a $(BUILD_DIR)/$(TARGET).hex
 
 # 编译但不链接（调试用）
 compile: $(OBJS_BUILD)
