@@ -1,6 +1,6 @@
 # Makefile for SDCC project with automatic library discovery
 CC = sdcc
-CFLAGS = --model-small --opt-code-size
+CFLAGS = --model-medium --opt-code-size
 
 # 定义库名称（只需要在这里添加）
 LIBRARIES = User System
