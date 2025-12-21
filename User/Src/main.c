@@ -10,7 +10,8 @@
 
 #define BEE P32
 
-typedef enum{
+typedef enum
+{
   LED_MODE_OFF = 0,
   LED_MODE_ON = 1,
   LED_MODE_LOOP = 2,
@@ -18,7 +19,8 @@ typedef enum{
   LED_RUN = 4,
 } LedMode;
 
-typedef enum{
+typedef enum
+{
   MUSIC_MODE_OFF = 0,
   MUSIC_MODE_1,
   MUSIC_MODE_2,
@@ -44,10 +46,12 @@ void main(void)
   P5M0 = 0x00; // 0b00110000
   P5M1 = 0x00; // 0b00000000
 
-  P5M1 |= 0x10;
+  P5M1 |= 0x20;
 
   P3M0 = 0x04; // 0b00001000
   P3M1 = 0x00;
+
+  P5PU = 0x00;
 
   RandomSeedInit(RandomGet());
 
@@ -55,93 +59,64 @@ void main(void)
 
   BeepInit();
 
-  SysTickInit();
-
-  Key_Init();
-
-  BeepPlay(440, 500);
+  BeepPlay(1000, 500);
 
   Led_write(0xffffffff, 32);
   delay_ms(1000);
   Led_write(0x00000000, 32);
   delay_ms(1000);
+  uint8_t index = 0;
 
-  Led_DisplayChar('A');
-  BeepPlay(440, 500);
   while (1)
   {
-    if (tick_status & SYS_1MS_TASK)
+    if (KEY1_PIN)
     {
-      // 执行1ms任务
-      static uint8_t led_1ms;
-      if (led_1ms){
-        Led_write(Led_DisplayData | 0x00000001, 32);
-      }else{
-        Led_write(Led_DisplayData & ~0x00000001, 32);
+      Led_write(LED_A, 32);
+      // BeepPlay(1000, 100);
+      while (KEY1_PIN)
+        ;
+      Led_write(Led_DisplayData & ~LED_A, 32);
+      // BeepPlay(1000, 100);
+      
+      led_mode = (led_mode + 1) % 5;
+      switch (led_mode)
+      {
+      case LED_MODE_OFF:
+        Led_write(0x00000000, 32);
+        break;
+
+      case LED_MODE_ON:
+        Led_write(0xFFFFFFFF, 32);
+        break;
+
+      default:
+        break;
       }
-      led_1ms = !led_1ms;
-      tick_status &= ~SYS_1MS_TASK;
     }
-    if (tick_status & SYS_10MS_TASK)
+
+    switch (led_mode)
     {
-      // 执行10ms任务
-      static uint8_t led_10ms;
-      if (led_10ms){
-        Led_write(Led_DisplayData | 0x00000002, 32);
-      }else{
-        Led_write(Led_DisplayData & ~0x00000002, 32);
-      }
-      led_10ms = !led_10ms;
+    case LED_MODE_LOOP:
+      Led_write(LedData[index], 32);
+      index = (index + 1) % 26;
+      delay_ms(180);
+      break;
+    
+    case LED_MODE_RANDOM:
+      Led_write(RandomGetRange(0, 0x7FFFFFF) << 6, 32);
+      delay_ms(280);
+      break;
 
-      tick_status &= ~SYS_10MS_TASK;
-    }
-    if (tick_status & SYS_100MS_TASK)
-    {
-      // 执行100ms任务
-      Key_TriggerProcess(&key_A1);
-    }
-    if (tick_status & SYS_1000MS_TASK)
-    {
-      // 执行1000ms任务
-
-      tick_status &= ~SYS_1000MS_TASK;
-    }
-    if (tick_status & SYS_20MS_TASK)
-    {
-      // 扫描按键
-      Key_ScanProcess(&key_A1);
-
-      tick_status &= ~SYS_20MS_TASK;
+    case LED_RUN:
+      Led_write(0x00000000, 32);
+      Led_DisplayString("RUN", 1000);
+      Led_write(0x00000000, 32);
+      break;
+    default:
+      break;
     }
 
-    // Led_write(0xffffffff, 32);
-    // delay_ms(1000);
-    // Led_write(0x00000000, 32);
-    // delay_ms(1000);
-
-    // for (uint8_t i = 0; i < 26; i++)
-    // {
-    //   Led_Append(LedData[i], 32);
-    //   BeepPlay(100 + i * 50, 200);
-    // }
-    // delay_ms(1000);
-
-    // Led_DisplayString("RUN", 2000);
-    // delay_ms(1000);
-    // Led_DisplayString("HELLO WORLD", 1000);
-
-    // for (uint8_t i = 0; i < 30; i++)
-    // {
-    //   Led_write(RandomGetRange(0, 0x7FFFFFF) << 6, 32);
-    //   BeepPlay(220, 100);
-    //   delay_ms(400);
-    // }
-    // for (uint8_t i = 0; i < 30; i++)
-    // {
-    //   Led_write(LedData[RandomGetRange(0, 25)], 32);
-    //   BeepPlay(220, 100);
-    //   delay_ms(400);
-    // }
+    delay_ms(20);
 
     // Kids
     // PlayMusic(Music1, 0, 180, 3);
@@ -157,32 +132,32 @@ void main(void)
 }
 
 // A1短按：LED模式切换
-void Key_A1_ShortClick_callback(){
-  // led_mode = (led_mode + 1) % 5;
+void Key_A1_ShortClick_callback()
+{
+  led_mode = (led_mode + 1) % 5;
   // Led_write(0x00000000, 32);
   // Led_DisplayChar('B' + led_mode);
   switch (led_mode)
   {
-    case LED_MODE_OFF:
-      Led_write(0UL, 32);
-      break;
+  case LED_MODE_OFF:
+    Led_write(0UL, 32);
+    break;
 
-    case LED_MODE_ON:
-      Led_write(0xFFFFFFFFUL, 32);
-      break;
-      
-    default:
-      break;
+  case LED_MODE_ON:
+    Led_write(0xFFFFFFFFUL, 32);
+    break;
+
+  default:
+    break;
   }
 }
 
-
-void Key_A1_LongClick_callback(){
-
+void Key_A1_LongClick_callback()
+{
 }
 
 // 保留
 void Key_A1_LongRepeat_callback()
 {
-    ;
+  ;
 }
