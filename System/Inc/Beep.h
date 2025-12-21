@@ -7,5 +7,6 @@
 
 void BeepSetFreq(uint16_t freq);
 void BeepInit(void);
+void BeepPlay(uint16_t freq, uint16_t duration_ms);
 
 #endif
