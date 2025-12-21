@@ -9,31 +9,11 @@
 #include "Music.h"
 #include "Debug.h"
 #include "Music_source.h" // 包含音乐数据
+#include "Led.h"
 
-#define DS P54
-#define ST_CP P33
-#define SH_CP P30
 #define BEE P32
 
-void write(uint32_t data, uint8_t len){
-  // 先定义掩码，每次只移一位，速度更快
-  uint32_t hide_code = 1UL;
-  for (int bit_index = 0; bit_index < len; bit_index++){
-    SH_CP = 0;
-    // __asm__("nop");
-    DS = data & hide_code; // 掩码必须说明为uint32_t否则会出错
-    // __asm__("nop");
-    SH_CP = 1;
-    // __asm__("nop");
-    hide_code = hide_code << 1;
-  }
-  DS = 0;
-  SH_CP = 0;
-  __asm__("nop");
-  ST_CP = 1;
-  __asm__("nop");
-  ST_CP = 0;
-}
+extern __code uint32_t LedData[];
 
 void main(void)
 {
@@ -44,40 +24,38 @@ void main(void)
 
   P3M0 = 0x04; // 0b00001000
   P3M1 = 0x00;
-  
-  DS = 0;
-  SH_CP = 0;
-  ST_CP = 0;
 
-  delay_ms(500);
+  Led_Init();
 
   // UartInit();
   // UartSendString("init done\n\r");
-  
+
   BeepInit();
+
   // MusicPlayer_Init();
-  BeepSetFreq(500);
+  // BeepSetFreq(500);
   // UartSendString("BeepInit\n\r");
-  write(0x000000, 24);
 
-  while(1){
+  while (1)
+  {
     // UartSendString(string);
-     write(0xffffffff, 32);
-     delay_ms(1000);
-     write(0x00000000, 32);
-     delay_ms(1000);
+    Led_write(0xffffffff, 32);
+    delay_ms(1000);
+    Led_write(0x00000000, 32);
+    delay_ms(1000);
+
+    BeepSetFreq(0);
+    for (uint8_t i = 0; i < 26; i++)
+    {
+      Led_Append(LedData[i], 32);
+      BeepSetFreq(100 + i * 50);
+      delay_ms(500);
+    }
+    BeepSetFreq(0);
     
-     CR = 1;
-     for (uint8_t i = 0; i < 26; i++){
-       write(1UL << 1UL * i, 26);
-       BeepSetFreq(100 + i * 100);
-       delay_ms(500);
-     }
-     CR = 0;
-
-    // MusicPlayerManager();
-
-    // DebugDecoding();
+    Led_DisplayString("RUN", 2000);
+    delay_ms(1000);
+    Led_DisplayString("HELLO WORLD", 1000);
 
     // Kids
     // PlayMusic(Music1, 0, 180, 3);
@@ -86,9 +64,8 @@ void main(void)
     // PlayMusic(Music2, 0, 15, 3);
     // BeepSetFreq(180);
     // delay_ms(10);
-   
+
     // PlayMusic(Music, 0, 80, 2);
     // delay_ms(2000);
   }
 }
-

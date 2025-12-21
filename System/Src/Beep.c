@@ -1,6 +1,7 @@
 #include "stc8_sdcc.h"
 #include <stdint.h>
 #include "Beep.h"
+#include "Delay.h"
 
 void BeepSetFreq(uint16_t freq){
   if (freq == 0){
@@ -54,4 +55,12 @@ void pwm_init(void){
 void BeepInit(){
   timer0_init();
   pwm_init();
+  BeepSetFreq(0);
+}
+
+void BeepPlay(uint16_t freq, uint16_t duration_ms){
+  BeepSetFreq(freq);
+  // 延时指定时间
+  delay_ms(duration_ms);
+  BeepSetFreq(0);
 }
