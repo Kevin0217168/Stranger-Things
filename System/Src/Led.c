@@ -1,6 +1,7 @@
 #include "Led.h"
 #include "Delay.h"
 #include "Beep.h"
+#include "Key.h"
 #include "stc8_sdcc.h"
 #include "stdint.h"
 
@@ -60,20 +61,28 @@ void Led_DisplayChar(char c)
     }
 }
 
-void Led_DisplayString(const char* str, uint16_t ms)
+LedTask ledTask = {0, LED_STRING_MODE_OFF, 0};
+
+void Led_DisplayString(const char* str, uint16_t delayTick)
 {
-    while (*str)
-    {
-        if (*str >= 'A' && *str <= 'Z')
-        {
-            Led_DisplayChar(*str);
-        }else
-        {
-            Led_write(0UL, 32); // 清屏
-        }
-        str++;
-        BeepPlay(220, 100);
-        delay_ms(ms-100);
-    }
+    ledTask.str = str;
+    ledTask.delayTick = delayTick;
+    ledTask.nextTick = GetSysTick() + delayTick;
+    ledTask.mode = LED_STRING_MODE_ON;
 }
 
+void Led_DisplayStringProcess(LedTask* task){
+    if (task->mode == LED_STRING_MODE_ON && GetSysTick() > task->nextTick){
+        if (*task->str >= 'A' && *task->str <= 'Z')
+        {
+            Led_DisplayChar(*task->str);
+        }else if(*task->str == ' '){
+            Led_write(0UL, 32); // 清屏
+        }else{
+            task->mode = LED_STRING_MODE_OFF;
+            return;
+        }
+        task->str++;
+        task->nextTick = GetSysTick() + task->delayTick;
+    }
+}

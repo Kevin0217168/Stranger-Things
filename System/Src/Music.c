@@ -9,6 +9,10 @@
 #include "Beep.h"
 #include "Delay.h"
 #include "Music.h"
+#include "Led.h"
+#include "Key.h"
+
+extern uint32_t Led_DisplayData;
 
 #define ROM __code
 #define XDATA __xdata
@@ -157,6 +161,16 @@ void DecodeDuration(MusicNote *musicNote, uint8_t encodedDuration, uint16_t base
     }
 }
 
+MusicPlayTask musicPlayTask = {
+    .mode = MUSIC_PLAY_OFF,
+    .music = 0,
+    .keySignature = 0,
+    .tempo = 120,
+    .octave = 2,
+    .i = 0,
+    .nextTick = 0
+};
+
 // ==================== 音乐播放器核心 ====================
 
 /**
@@ -168,45 +182,48 @@ void DecodeDuration(MusicNote *musicNote, uint8_t encodedDuration, uint16_t base
  */
 void PlayMusic(__code uint8_t *music, uint8_t keySignature, uint16_t tempo, uint8_t octave)
 {
-    uint16_t i = 0;
-    while (music[i+1] != 0 || music[i] != 0)
+    musicPlayTask.mode = MUSIC_PLAY_ON;
+    musicPlayTask.music = music;
+    musicPlayTask.keySignature = keySignature;
+    musicPlayTask.tempo = tempo;
+    musicPlayTask.octave = octave;
+    musicPlayTask.i = 0;
+    musicPlayTask.nextTick = GetSysTick();
+}
+
+void MusicPlayProcess(MusicPlayTask *task)
+{
+    if (task->mode == MUSIC_PLAY_ON && GetSysTick() >= task->nextTick)
     {
+
         // 读取音符
-        uint8_t note = music[i];
-        uint8_t duration = music[i+1];
+        uint8_t note = task->music[task->i];
+        uint8_t duration = task->music[task->i+1];
 
         // 结束标志
         if (note == 0 && duration == 0)
         {
-            break;
+            task->mode = MUSIC_PLAY_OFF;
+            return;
         }
         
         // 解码
         MusicNote musicNote;
         // 解码频率
-        musicNote.freq = DecodeNoteFrequency(note, keySignature, octave);
+        musicNote.freq = DecodeNoteFrequency(note, task->keySignature, task->octave);
 
         // 解码时长
-        DecodeDuration(&musicNote, duration, tempo);
+        DecodeDuration(&musicNote, duration, task->tempo);
 
         // 播放音符
         if (musicNote.freq > 0)
         {
-            BeepSetFreq(musicNote.freq); // 设置频率
-        }
-        else
-        {
-            BeepSetFreq(0); // 休止符，停止发声
+            BeepPlay(musicNote.freq, musicNote.soundMs);
         }
 
-        delay_ms(musicNote.soundMs); // 播放时长
-        BeepSetFreq(0);              // 停止发声
-        delay_ms(musicNote.silenceMs); // 间隔时长
+        task->nextTick += (musicNote.soundMs + musicNote.silenceMs)/250;
 
-        i += 2;
+        task->i += 2;
     }
-
-    // 停止发声
-    BeepSetFreq(0);
-    // g_isPlaying = false;
+    
 }

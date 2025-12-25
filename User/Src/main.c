@@ -36,6 +36,30 @@ extern __code uint32_t LedData[];
 extern uint32_t Led_DisplayData;
 extern volatile Key key_A1;
 extern volatile uint8_t tick_status;
+extern LedTask ledTask;
+extern BeepTask beepTask;
+extern MusicPlayTask musicPlayTask;
+int8_t index = 0;
+
+void LED_loop(){
+  if (index <= 25){
+    Led_Append(LedData[index], 32);
+  }else if (index <= 35){
+    ;
+  }else{
+    Led_write(0UL, 32);
+    index = -1;
+  }
+  index++;
+}
+
+void LED_random(){
+  if (index > 1){
+    Led_write(RandomGetRange(0, 0x7FFFFFF) << 6, 32);
+    index = 0;
+  }
+  index++;
+}
 
 void main(void)
 {
@@ -44,10 +68,12 @@ void main(void)
   P5M0 = 0x00; // 0b00110000
   P5M1 = 0x00; // 0b00000000
 
-  P5M1 |= 0x10;
+  P5M1 |= 0x20;
 
   P3M0 = 0x04; // 0b00001000
   P3M1 = 0x00;
+
+  P5PU = 0x00;
 
   RandomSeedInit(RandomGet());
 
@@ -59,46 +85,45 @@ void main(void)
 
   Key_Init();
 
-  BeepPlay(440, 500);
-
   Led_write(0xffffffff, 32);
   delay_ms(1000);
   Led_write(0x00000000, 32);
   delay_ms(1000);
 
   Led_DisplayChar('A');
-  BeepPlay(440, 500);
   while (1)
   {
     if (tick_status & SYS_1MS_TASK)
     {
-      // 执行1ms任务
-      static uint8_t led_1ms;
-      if (led_1ms){
-        Led_write(Led_DisplayData | 0x00000001, 32);
-      }else{
-        Led_write(Led_DisplayData & ~0x00000001, 32);
-      }
-      led_1ms = !led_1ms;
+      BeepProcess(&beepTask);
+      Led_DisplayStringProcess(&ledTask);
+      MusicPlayProcess(&musicPlayTask);
+
       tick_status &= ~SYS_1MS_TASK;
     }
     if (tick_status & SYS_10MS_TASK)
     {
-      // 执行10ms任务
-      static uint8_t led_10ms;
-      if (led_10ms){
-        Led_write(Led_DisplayData | 0x00000002, 32);
-      }else{
-        Led_write(Led_DisplayData & ~0x00000002, 32);
-      }
-      led_10ms = !led_10ms;
-
+      
       tick_status &= ~SYS_10MS_TASK;
     }
     if (tick_status & SYS_100MS_TASK)
     {
       // 执行100ms任务
       Key_TriggerProcess(&key_A1);
+      
+
+      switch(led_mode){
+        case LED_MODE_LOOP:
+          LED_loop();
+          break;
+        case LED_MODE_RANDOM:
+          LED_random();
+          break;
+        default:
+          break;
+      }
+
+      tick_status &= ~SYS_100MS_TASK;
     }
     if (tick_status & SYS_1000MS_TASK)
     {
@@ -114,53 +139,18 @@ void main(void)
       tick_status &= ~SYS_20MS_TASK;
     }
 
-    // Led_write(0xffffffff, 32);
-    // delay_ms(1000);
-    // Led_write(0x00000000, 32);
-    // delay_ms(1000);
-
-    // for (uint8_t i = 0; i < 26; i++)
-    // {
-    //   Led_Append(LedData[i], 32);
-    //   BeepPlay(100 + i * 50, 200);
-    // }
-    // delay_ms(1000);
-
-    // Led_DisplayString("RUN", 2000);
-    // delay_ms(1000);
-    // Led_DisplayString("HELLO WORLD", 1000);
-
-    // for (uint8_t i = 0; i < 30; i++)
-    // {
-    //   Led_write(RandomGetRange(0, 0x7FFFFFF) << 6, 32);
-    //   BeepPlay(220, 100);
-    //   delay_ms(400);
-    // }
     // for (uint8_t i = 0; i < 30; i++)
     // {
     //   Led_write(LedData[RandomGetRange(0, 25)], 32);
     //   BeepPlay(220, 100);
     //   delay_ms(400);
     // }
-
-    // Kids
-    // PlayMusic(Music1, 0, 180, 3);
-    // delay_ms(2000);
-    // Running Up That Hill
-    // PlayMusic(Music2, 0, 15, 3);
-    // BeepSetFreq(180);
-    // delay_ms(10);
-
-    // PlayMusic(Music, 0, 80, 2);
-    // delay_ms(2000);
   }
 }
 
 // A1短按：LED模式切换
 void Key_A1_ShortClick_callback(){
-  // led_mode = (led_mode + 1) % 5;
-  // Led_write(0x00000000, 32);
-  // Led_DisplayChar('B' + led_mode);
+  led_mode = (led_mode + 1) % 5;
   switch (led_mode)
   {
     case LED_MODE_OFF:
@@ -170,6 +160,21 @@ void Key_A1_ShortClick_callback(){
     case LED_MODE_ON:
       Led_write(0xFFFFFFFFUL, 32);
       break;
+
+    case LED_MODE_LOOP:
+      Led_write(0x00000000, 32);
+      index = 0;
+      break;
+
+    case LED_MODE_RANDOM:
+      Led_write(0x00000000, 32);
+      index = 0;
+      break;
+
+    case LED_RUN:
+      Led_write(0x00000000, 32);
+      Led_DisplayString("RUN", 800);
+      break;
       
     default:
       break;
@@ -178,7 +183,23 @@ void Key_A1_ShortClick_callback(){
 
 
 void Key_A1_LongClick_callback(){
-
+  music_mode = (music_mode + 1) % 4;
+  switch (music_mode){
+    case MUSIC_MODE_1:
+      // Kids
+      PlayMusic(Music1, 0, 180, 3);
+      break;
+    case MUSIC_MODE_2:
+      // Running Up That Hill
+      PlayMusic(Music2, 0, 15, 3);
+      break;
+    case MUSIC_MODE_3:
+      PlayMusic(Music, 0, 80, 2);
+      break;
+    default:
+      musicPlayTask.mode = MUSIC_PLAY_OFF;
+      break;
+  }
 }
 
 // 保留

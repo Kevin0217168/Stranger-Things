@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "Beep.h"
 #include "Delay.h"
+#include "Key.h"
 
 void BeepSetFreq(uint16_t freq){
   if (freq == 0){
@@ -58,9 +59,17 @@ void BeepInit(){
   BeepSetFreq(0);
 }
 
-void BeepPlay(uint16_t freq, uint16_t duration_ms){
+BeepTask beepTask = {0, BEEP_OFF};
+
+void BeepPlay(uint16_t freq, uint16_t duration_tick){
+  beepTask.state = BEEP_ON;
+  beepTask.end_tick = GetSysTick() + duration_tick;
   BeepSetFreq(freq);
-  // 延时指定时间
-  delay_ms(duration_ms);
-  BeepSetFreq(0);
+}
+
+void BeepProcess(BeepTask* beepTask){
+  if (beepTask->state == BEEP_ON && GetSysTick() >= beepTask->end_tick){
+    BeepSetFreq(0);
+    beepTask->state == BEEP_OFF;
+  }
 }
