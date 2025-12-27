@@ -4,7 +4,8 @@
 #include "stc8_sdcc.h"
 #include "stdint.h"
 
-#define SYS_CLOCK_HZ 22168000
+// #define SYS_CLOCK_HZ 22168000
+#define SYS_CLOCK_HZ 7372800
 #define SYSTICK_FREQUENCY_HZ 1000
 
 #define SYS_1MS_TASK 0b00000001

@@ -127,36 +127,36 @@ void DecodeDuration(MusicNote *musicNote, uint8_t encodedDuration, uint16_t base
     }
 
     // 计算基本时长 (四分音符的毫秒数)
-    uint32_t quarterNoteMs = 60000 / baseTempo; // 60000ms / BPM
+    uint32_t quarterNoteMs = 60000UL / baseTempo; // 60000ms / BPM
 
-    // 计算该音符的时长
-    uint16_t durationMs = quarterNoteMs * 4 / DURATION_VALUES[length];
+    // 计算该音符的时长（使用 32 位以避免中间溢出）
+    uint32_t durationMs = (quarterNoteMs * 4U) / DURATION_VALUES[length];
 
-    // 符点音符：增加一半的时长
+    // 符点：增加一半的时长
     if (dotted)
     {
-        durationMs = durationMs + (durationMs / 2);
+        durationMs += durationMs / 2U;
     }
 
-    // 应用演奏法
+    // 使用整数比例代替浮点乘法，避免使用浮点数
+    uint32_t soundMs;
     switch (effect)
     {
     case 0: // 普通奏法 (80%发声，20%间隔)
-        musicNote->soundMs = durationMs * 0.8;
-        musicNote->silenceMs = durationMs - musicNote->soundMs;
+        soundMs = durationMs * 80U / 100U; // 0.8 -> 80/100
         break;
     case 1: // 连音 (95%发声，5%间隔)
-        musicNote->soundMs = durationMs * 0.95;
-        musicNote->silenceMs = durationMs - musicNote->soundMs;
+        soundMs = durationMs * 95U / 100U; // 0.95 -> 95/100
         break;
     case 2: // 顿音 (50%发声，50%间隔)
-        musicNote->soundMs = durationMs * 0.5;
-        musicNote->silenceMs = durationMs - musicNote->soundMs;
+        soundMs = durationMs * 50U / 100U; // 0.5 -> 50/100
         break;
     default: // 默认普通奏法
-        musicNote->soundMs = durationMs * 0.8;
-        musicNote->silenceMs = durationMs - musicNote->soundMs;
+        soundMs = durationMs * 80U / 100U;
     }
+
+    musicNote->soundMs = (uint16_t)soundMs;
+    musicNote->silenceMs = (uint16_t)(durationMs - soundMs);
 }
 
 MusicPlayTask musicPlayTask = {

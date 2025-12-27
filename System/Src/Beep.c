@@ -12,8 +12,20 @@ void BeepSetFreq(uint16_t freq){
   }else if(!CR){
     CR = 1;
   }
-  // 设置重装值
-  uint16_t count = 65535 - (uint16_t)(350 / (freq / 1000.0) - 2);
+  // 使用整数算式计算重装值，避免浮点运算
+  // 目标：ticks = SYS_CLOCK_HZ / (64 * freq) - 2
+  // 使用四舍五入：ticks = (SYS_CLOCK_HZ + denom/2) / denom
+  uint32_t denom = (uint32_t)64U * (uint32_t)freq;
+  uint32_t ticks = 0;
+  if (denom != 0U) {
+    ticks = (SYS_CLOCK_HZ + denom / 2U) / denom;
+    if (ticks >= 2U) {
+      ticks -= 2U;
+    } else {
+      ticks = 0U;
+    }
+  }
+  uint16_t count = (uint16_t)(65535U - (uint16_t)ticks);
   TH0 = count >> 8;
   TL0 = count & (uint16_t)0x00ff;
 }

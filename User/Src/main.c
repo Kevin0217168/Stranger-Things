@@ -7,6 +7,7 @@
 #include "Led.h"
 #include "Random.h"
 #include "Key.h"
+#include "Serial.h"
 
 #define BEE P32
 
@@ -74,6 +75,10 @@ void main(void)
   P3M1 = 0x00;
 
   P5PU = 0x00;
+
+  UartInit();
+  delay_ms(2000);
+  UartSendString("System Start...\r\n");
 
   RandomSeedInit(RandomGet());
 
