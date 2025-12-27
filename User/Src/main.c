@@ -7,7 +7,7 @@
 #include "Led.h"
 #include "Random.h"
 #include "Key.h"
-#include "Serial.h"
+// #include "Serial.h"
 
 #define BEE P32
 
@@ -76,9 +76,8 @@ void main(void)
 
   P5PU = 0x00;
 
-  UartInit();
-  delay_ms(2000);
-  UartSendString("System Start...\r\n");
+  // UartInit();
+  // delay_ms(2000);
 
   RandomSeedInit(RandomGet());
 
@@ -89,12 +88,7 @@ void main(void)
   SysTickInit();
 
   Key_Init();
-
-  Led_write(0xffffffff, 32);
-  delay_ms(1000);
-  Led_write(0x00000000, 32);
-  delay_ms(1000);
-
+  // UartSendString("System Started\r\n");
   Led_DisplayChar('A');
   while (1)
   {
@@ -103,6 +97,14 @@ void main(void)
       BeepProcess(&beepTask);
       Led_DisplayStringProcess(&ledTask);
       MusicPlayProcess(&musicPlayTask);
+
+      static uint8_t led_1ms;
+      if (led_1ms){
+        Led_write(Led_DisplayData | 0x00000001, 32);
+      }else{
+        Led_write(Led_DisplayData & ~0x00000001, 32);
+      }
+      led_1ms = !led_1ms;
 
       tick_status &= ~SYS_1MS_TASK;
     }
@@ -192,11 +194,11 @@ void Key_A1_LongClick_callback(){
   switch (music_mode){
     case MUSIC_MODE_1:
       // Kids
-      PlayMusic(Music1, 0, 180, 3);
+      PlayMusic(Music1, 0, 200, 3);
       break;
     case MUSIC_MODE_2:
       // Running Up That Hill
-      PlayMusic(Music2, 0, 15, 3);
+      PlayMusic(Music2, 0, 30, 3);
       break;
     case MUSIC_MODE_3:
       PlayMusic(Music, 0, 80, 2);

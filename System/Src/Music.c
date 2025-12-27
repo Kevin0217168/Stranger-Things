@@ -201,7 +201,10 @@ void MusicPlayProcess(MusicPlayTask *task)
         // 结束标志
         if (note == 0 && duration == 0)
         {
-            task->mode = MUSIC_PLAY_OFF;
+            // task->mode = MUSIC_PLAY_OFF;
+            // 重头开始
+            task->i = 0;
+            task->nextTick = GetSysTick();
             return;
         }
         
