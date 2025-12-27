@@ -1,2 +1,2 @@
 #!/bin/bash
-make all info flash clean && picocom --lower-dtr -b 115200 /dev/ttyUSB0
+make clean all info flash && picocom --lower-dtr -p 2 -b 115200 /dev/ttyUSB0

@@ -62,10 +62,25 @@
 #define LED_Y LED_25
 #define LED_Z LED_26
 
+typedef enum{
+    LED_STRING_MODE_OFF,
+    LED_STRING_MODE_ON,
+} LedStringMode;
+
+typedef struct
+{
+    const char* str;
+    LedStringMode mode;
+    uint16_t delayTick;
+    uint32_t nextTick;
+
+} LedTask;
+
 void Led_Init(void);
 void Led_write(uint32_t data, uint8_t len);
 void Led_Append(uint32_t data, uint8_t len);
 void Led_DisplayChar(char c);
-void Led_DisplayString(const char* str, uint16_t delay_ms);
+void Led_DisplayString(const char* str, uint16_t delayTick);
+void Led_DisplayStringProcess(LedTask* task);
 
 #endif

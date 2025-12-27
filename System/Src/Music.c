@@ -9,8 +9,8 @@
 #include "Beep.h"
 #include "Delay.h"
 #include "Music.h"
-// #include "Music_source.h" // 包含音乐数据
-#include "Debug.h"
+// #include "Led.h"
+#include "Key.h"
 
 #define ROM __code
 #define XDATA __xdata
@@ -72,7 +72,6 @@ void SetMusicTable(uint8_t Signature, uint8_t Octachord)
         else if (Octachord == 3)
             musicTable.NewFreTab[i] <<= 1;
 
-        mini_print("SetMusicTable: i=%d, j=%d, freq=%d\r\n", i, j, musicTable.NewFreTab[i]);
     }
 }
 
@@ -103,9 +102,7 @@ uint16_t DecodeNoteFrequency(uint8_t encodedNote, uint8_t keySignature, uint8_t 
         CurrentFre >>= 1; // 低音
     if (SM == 3)
         CurrentFre <<= 1; // 高音
-
-    mini_print("note: %d, level: %d, symbol: %d, CurrentFre: %d\r\n", SL, SM, SH, CurrentFre);
-        
+       
     return CurrentFre;
 }
 
@@ -130,40 +127,47 @@ void DecodeDuration(MusicNote *musicNote, uint8_t encodedDuration, uint16_t base
     }
 
     // 计算基本时长 (四分音符的毫秒数)
-    uint32_t quarterNoteMs = 60000 / baseTempo; // 60000ms / BPM
+    uint32_t quarterNoteMs = 60000UL / baseTempo; // 60000ms / BPM
 
-    // 计算该音符的时长
-    uint16_t durationMs = quarterNoteMs * 4 / DURATION_VALUES[length];
+    // 计算该音符的时长（使用 32 位以避免中间溢出）
+    uint32_t durationMs = (quarterNoteMs * 4U) / DURATION_VALUES[length];
 
-    // 符点音符：增加一半的时长
+    // 符点：增加一半的时长
     if (dotted)
     {
-        durationMs = durationMs + (durationMs / 2);
+        durationMs += durationMs / 2U;
     }
 
-    mini_print("DecodeDuration: length=%d, effect=%d, dotted=%d, durationMs=%d\r\n",
-               length, effect, dotted, durationMs);
-
-    // 应用演奏法
+    // 使用整数比例代替浮点乘法，避免使用浮点数
+    uint32_t soundMs;
     switch (effect)
     {
     case 0: // 普通奏法 (80%发声，20%间隔)
-        musicNote->soundMs = durationMs * 0.8;
-        musicNote->silenceMs = durationMs - musicNote->soundMs;
+        soundMs = durationMs * 80U / 100U; // 0.8 -> 80/100
         break;
     case 1: // 连音 (95%发声，5%间隔)
-        musicNote->soundMs = durationMs * 0.95;
-        musicNote->silenceMs = durationMs - musicNote->soundMs;
+        soundMs = durationMs * 95U / 100U; // 0.95 -> 95/100
         break;
     case 2: // 顿音 (50%发声，50%间隔)
-        musicNote->soundMs = durationMs * 0.5;
-        musicNote->silenceMs = durationMs - musicNote->soundMs;
+        soundMs = durationMs * 50U / 100U; // 0.5 -> 50/100
         break;
     default: // 默认普通奏法
-        musicNote->soundMs = durationMs * 0.8;
-        musicNote->silenceMs = durationMs - musicNote->soundMs;
+        soundMs = durationMs * 80U / 100U;
     }
+
+    musicNote->soundMs = (uint16_t)soundMs;
+    musicNote->silenceMs = (uint16_t)(durationMs - soundMs);
 }
+
+MusicPlayTask musicPlayTask = {
+    .mode = MUSIC_PLAY_OFF,
+    .music = 0,
+    .keySignature = 0,
+    .tempo = 120,
+    .octave = 2,
+    .i = 0,
+    .nextTick = 0
+};
 
 // ==================== 音乐播放器核心 ====================
 
@@ -174,118 +178,52 @@ void DecodeDuration(MusicNote *musicNote, uint8_t encodedDuration, uint16_t base
  * @param tempo 演奏速度 (BPM)
  * @param articulation 演奏法 (0-普通, 1-连音, 2-顿音)
  */
-void PlayMusic(__code uint8_t *music, uint8_t keySignature, uint16_t tempo, uint8_t octave)
+void PlayMusic(__code const uint8_t *music, uint8_t keySignature, uint16_t tempo, uint8_t octave)
 {
-    uint16_t i = 0;
-    while (music[i+1] != 0 || music[i] != 0)
+    musicPlayTask.mode = MUSIC_PLAY_ON;
+    musicPlayTask.music = music;
+    musicPlayTask.keySignature = keySignature;
+    musicPlayTask.tempo = tempo;
+    musicPlayTask.octave = octave;
+    musicPlayTask.i = 0;
+    musicPlayTask.nextTick = GetSysTick();
+}
+
+void MusicPlayProcess(MusicPlayTask *task)
+{
+    if (task->mode == MUSIC_PLAY_ON && GetSysTick() >= task->nextTick)
     {
+
         // 读取音符
-        uint8_t note = music[i];
-        uint8_t duration = music[i+1];
+        uint8_t note = task->music[task->i];
+        uint8_t duration = task->music[task->i+1];
 
         // 结束标志
         if (note == 0 && duration == 0)
         {
-            break;
+            // task->mode = MUSIC_PLAY_OFF;
+            // 重头开始
+            task->i = 0;
+            task->nextTick = GetSysTick();
+            return;
         }
         
         // 解码
         MusicNote musicNote;
         // 解码频率
-        musicNote.freq = DecodeNoteFrequency(note, keySignature, octave);
-        mini_print("PlayMusic: note=%x, freq=%d\r\n", note, musicNote.freq);
+        musicNote.freq = DecodeNoteFrequency(note, task->keySignature, task->octave);
 
         // 解码时长
-        DecodeDuration(&musicNote, duration, tempo);
-        mini_print("PlayMusic: soundMs=%d, silenceMs=%d\r\n", musicNote.soundMs, musicNote.silenceMs);
+        DecodeDuration(&musicNote, duration, task->tempo);
 
         // 播放音符
         if (musicNote.freq > 0)
         {
-            BeepSetFreq(musicNote.freq); // 设置频率
-        }
-        else
-        {
-            BeepSetFreq(0); // 休止符，停止发声
+            BeepPlay(musicNote.freq, musicNote.soundMs);
         }
 
-        delay_ms(musicNote.soundMs); // 播放时长
-        BeepSetFreq(0);              // 停止发声
-        delay_ms(musicNote.silenceMs); // 间隔时长
-
-        i += 2;
+        task->nextTick = GetSysTick() + musicNote.soundMs + musicNote.silenceMs;
+        task->i += 2;
     }
-
-    // 停止发声
-    BeepSetFreq(0);
-    // g_isPlaying = false;
+    
 }
-
-// /**
-//  * @brief 音乐播放管理器
-//  */
-// void MusicPlayerManager(void)
-// {
-//     while (1)
-//     {
-//         // 等待按键
-//         while (KEY_PIN)
-//             ; // 等待按键释放
-
-//         if (g_keyPressed)
-//         {
-//             g_keyPressed = false;
-//             g_currentState = (g_currentState + 1) % 3; // 循环3首音乐
-//         }
-
-//         // 根据状态播放对应的音乐
-//         switch (g_currentState)
-//         {
-//         case 0:
-//             PlayMusic(Music, 0, 120, 0); // C调，120BPM，普通奏法
-//             break;
-//         case 1:
-//             PlayMusic(Music1, 0, 100, 0); // C调，100BPM，普通奏法
-//             break;
-//         case 2:
-//             PlayMusic(Music2, 0, 140, 0); // C调，140BPM，普通奏法
-//             break;
-//         }
-//     }
-// }
-
-
-// // 选择要测试的音符
-// void TestSingleNote(uint8_t noteCode, uint16_t duration_ms)
-// {
-//     // 解码音符获取频率
-//     uint16_t freq = DecodeNoteFrequency(noteCode, 0, 0);
-
-//     // 设置频率
-//     BeepSetFreq(freq);
-
-//     // 播放指定时间
-//     for (uint16_t i = 0; i < duration_ms; i++)
-//     {
-//         delay_ms(1);
-//     }
-
-//     // 停止发声
-//     BeepSetFreq(0);
-// }
-
-// ==================== 示例主函数 ====================
-/*
-void main(void) {
-    // 系统初始化
-    System_Init();
-
-    // 音乐播放器初始化
-    MusicPlayer_Init();
-
-    // 进入音乐播放管理器
-    MusicPlayerManager();
-
-    while (1);
-}
-*/
