@@ -68,7 +68,6 @@ extern void Key_A1_LongRepeat_callback();
 
 void SysTickInit(void);
 void SysTick_Handler(void) __interrupt 3;
-void DelayMs(uint32_t ms);
 uint32_t GetSysTick(void);
 void Key_Init();
 void Key_ScanProcess(volatile Key *key);

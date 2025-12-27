@@ -70,6 +70,6 @@ void BeepPlay(uint16_t freq, uint16_t duration_tick){
 void BeepProcess(BeepTask* beepTask){
   if (beepTask->state == BEEP_ON && GetSysTick() >= beepTask->end_tick){
     BeepSetFreq(0);
-    beepTask->state == BEEP_OFF;
+    beepTask->state = BEEP_OFF;
   }
 }

@@ -1,4 +1,7 @@
 #include "Key.h"
+#include "Led.h"
+
+extern uint32_t Led_DisplayData;
 
 volatile uint32_t sysTick = 0;
 volatile uint8_t tick_status = 0;
@@ -31,15 +34,6 @@ void SysTick_Handler(void) __interrupt 3
     tick_status |= SYS_1000MS_TASK;
   }if (GetSysTick() % 20 == 0) {
     tick_status |= SYS_20MS_TASK;
-  }
-}
-
-void DelayMs(uint32_t ms)
-{
-  uint32_t targetTick = sysTick + ms;
-  while (sysTick < targetTick)
-  {
-    // Wait
   }
 }
 

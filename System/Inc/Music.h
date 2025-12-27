@@ -21,7 +21,7 @@ typedef enum{
 
 typedef struct{
     MusicPlayMode mode;
-    __code uint8_t *music;
+    __code const uint8_t *music;
     uint8_t keySignature;
     uint16_t tempo;
     uint8_t octave;
@@ -34,7 +34,7 @@ void SetMusicTable(uint8_t Signature, uint8_t Octachord);
 uint16_t DecodeNoteFrequency(uint8_t encodedNote, uint8_t keySignature, uint8_t octave);
 void DecodeDuration(MusicNote *musicNote, uint8_t encodedDuration, uint16_t baseTempo);
 
-void PlayMusic(__code uint8_t *music, uint8_t keySignature, uint16_t tempo, uint8_t octave);
+void PlayMusic(__code const uint8_t *music, uint8_t keySignature, uint16_t tempo, uint8_t octave);
 
 void MusicPlayProcess(MusicPlayTask *task);
 

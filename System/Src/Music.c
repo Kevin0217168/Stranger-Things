@@ -9,10 +9,8 @@
 #include "Beep.h"
 #include "Delay.h"
 #include "Music.h"
-#include "Led.h"
+// #include "Led.h"
 #include "Key.h"
-
-extern uint32_t Led_DisplayData;
 
 #define ROM __code
 #define XDATA __xdata
@@ -180,7 +178,7 @@ MusicPlayTask musicPlayTask = {
  * @param tempo 演奏速度 (BPM)
  * @param articulation 演奏法 (0-普通, 1-连音, 2-顿音)
  */
-void PlayMusic(__code uint8_t *music, uint8_t keySignature, uint16_t tempo, uint8_t octave)
+void PlayMusic(__code const uint8_t *music, uint8_t keySignature, uint16_t tempo, uint8_t octave)
 {
     musicPlayTask.mode = MUSIC_PLAY_ON;
     musicPlayTask.music = music;
@@ -221,8 +219,7 @@ void MusicPlayProcess(MusicPlayTask *task)
             BeepPlay(musicNote.freq, musicNote.soundMs);
         }
 
-        task->nextTick += (musicNote.soundMs + musicNote.silenceMs)/250;
-
+        task->nextTick = GetSysTick() + musicNote.soundMs + musicNote.silenceMs;
         task->i += 2;
     }
     
